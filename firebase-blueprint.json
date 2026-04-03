@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Information about the user's game account.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique user ID from Firebase Auth." },
+        "display_name": { "type": "string", "description": "The user's display name." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "photo_url": { "type": "string", "description": "The user's profile photo URL." },
+        "starting_balance": { "type": "number", "description": "The initial balance given to the user." },
+        "cash_balance": { "type": "number", "description": "The current cash balance of the user." },
+        "holdings_value": { "type": "number", "description": "The current total value of all holdings." },
+        "total_portfolio_value": { "type": "number", "description": "The sum of cash_balance and holdings_value." },
+        "created_at": { "type": "string", "format": "date-time", "description": "When the account was created." }
+      },
+      "required": ["uid", "email", "starting_balance", "cash_balance", "total_portfolio_value"]
+    },
+    "Character": {
+      "title": "Character",
+      "description": "A character stock in the market.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID for the character." },
+        "name": { "type": "string", "description": "Name of the character." },
+        "image_url": { "type": "string", "description": "URL to the character's image." },
+        "current_price": { "type": "number", "description": "Current price in berries." },
+        "previous_price": { "type": "number", "description": "Previous price for change calculation." },
+        "active": { "type": "boolean", "description": "Whether the character is currently tradable." },
+        "created_at": { "type": "string", "format": "date-time", "description": "When the character was added." }
+      },
+      "required": ["id", "name", "current_price", "previous_price", "active"]
+    },
+    "Holding": {
+      "title": "Holding",
+      "description": "A user's stock position in a character.",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "character_id": { "type": "string" },
+        "character_name": { "type": "string" },
+        "quantity": { "type": "number" },
+        "avg_buy_price": { "type": "number" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["user_id", "character_id", "character_name", "quantity", "avg_buy_price"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A record of a buy or sell operation.",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "character_id": { "type": "string" },
+        "character_name": { "type": "string" },
+        "type": { "type": "string", "enum": ["buy", "sell"] },
+        "quantity": { "type": "number" },
+        "price": { "type": "number" },
+        "total": { "type": "number" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["user_id", "character_id", "character_name", "type", "quantity", "price", "total"]
+    },
+    "MarketState": {
+      "title": "MarketState",
+      "description": "Global market state information.",
+      "type": "object",
+      "properties": {
+        "last_update": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["open", "closed"] }
+      },
+      "required": ["last_update", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User account documents stored by their unique UID."
+    },
+    "/characters/{characterId}": {
+      "schema": "Character",
+      "description": "Character stock documents."
+    },
+    "/holdings/{holdingId}": {
+      "schema": "Holding",
+      "description": "User stock holdings. ID is usually user_id + character_id."
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "History of all trades."
+    },
+    "/market_state/{stateId}": {
+      "schema": "MarketState",
+      "description": "Global market state information."
+    }
+  }
+}

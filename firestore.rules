@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required, immutable)
+    //   - email: string (required, immutable)
+    //   - display_name: string (optional)
+    //   - photo_url: string (optional)
+    //   - starting_balance: number (required, immutable)
+    //   - cash_balance: number (required)
+    //   - created_at: timestamp (required, immutable)
+    //
+    // Collection: characters
+    // Document ID: {characterId}
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - image_url: string (optional)
+    //   - current_price: number (required)
+    //   - previous_price: number (required)
+    //   - active: bool (required)
+    //   - created_at: timestamp (required)
+    //
+    // ===============================================================
+
+    // Collection: market_state
+    // Document ID: {stateId}
+    // Fields:
+    //   - last_update: timestamp (required)
+    //   - status: string (required, enum: ['open', 'closed'])
+    //
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.email == "lapa6518@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'starting_balance', 'cash_balance', 'created_at']) &&
+             data.uid == request.auth.uid &&
+             data.starting_balance is number &&
+             data.cash_balance is number &&
+             (!('total_portfolio_value' in data) || data.total_portfolio_value is number) &&
+             (!('holdings_value' in data) || data.holdings_value is number) &&
+             (!('display_name' in data) || (data.display_name is string && data.display_name.size() < 100)) &&
+             (!('photo_url' in data) || (data.photo_url is string && data.photo_url.size() < 500));
+    }
+
+    function isValidCharacter(data) {
+      return data.keys().hasAll(['id', 'name', 'current_price', 'previous_price', 'active', 'created_at']) &&
+             data.id is string &&
+             data.name is string &&
+             data.current_price is number &&
+             data.previous_price is number &&
+             data.active is bool;
+    }
+
+    function isValidHolding(data) {
+      return data.keys().hasAll(['user_id', 'character_id', 'character_name', 'quantity', 'avg_buy_price']) &&
+             data.user_id == request.auth.uid &&
+             data.character_id is string &&
+             data.character_name is string &&
+             data.quantity is number && data.quantity >= 0 &&
+             data.avg_buy_price is number && data.avg_buy_price >= 0;
+    }
+
+    function isValidTransaction(data) {
+      return data.user_id == request.auth.uid &&
+             data.character_id is string &&
+             data.character_name is string &&
+             data.type in ['buy', 'sell'] &&
+             data.quantity is number && data.quantity > 0 &&
+             data.price is number && data.price >= 0 &&
+             data.total is number && data.total >= 0;
+    }
+
+    function isValidMarketState(data) {
+      return data.keys().hasAll(['last_update', 'status']) &&
+             data.status in ['open', 'closed'];
+    }
+
+    match /users/{userId} {
+      allow read, list: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+    }
+
+    match /characters/{characterId} {
+      allow read, list: if true;
+      allow create, update: if isAdmin() && isValidCharacter(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /holdings/{holdingId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.user_id == request.auth.uid);
+      allow create, update, delete: if isAuthenticated() && 
+                      (resource == null || resource.data.user_id == request.auth.uid) &&
+                      (request.method == 'delete' || (request.resource.data.user_id == request.auth.uid && isValidHolding(request.resource.data)));
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+      allow create: if isAuthenticated() && 
+                      isValidTransaction(request.resource.data);
+    }
+
+    match /market_state/{stateId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidMarketState(request.resource.data);
+    }
+  }
+}
