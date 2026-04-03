@@ -33,8 +33,13 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+const firestoreDatabaseId = import.meta.env.VITE_FIRESTORE_DATABASE_ID;
+
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+export const db = firestoreDatabaseId
+  ? getFirestore(app, firestoreDatabaseId)
+  : getFirestore(app);
+
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
